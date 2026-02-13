@@ -73,7 +73,21 @@ describe("session path safety", () => {
     ).toThrow(/within sessions directory/);
   });
 
-  it("accepts cross-agent absolute paths within the agents root", () => {
+  it("accepts absolute paths within the same agent sessions dir", () => {
+    const sessionsDir = "/tmp/openclaw/agents/main/sessions";
+
+    const resolved = resolveSessionFilePath(
+      "sess-1",
+      { sessionFile: "/tmp/openclaw/agents/main/sessions/subdir/threaded-session.jsonl" },
+      { sessionsDir },
+    );
+
+    expect(resolved).toBe(
+      path.resolve("/tmp/openclaw/agents/main/sessions/subdir/threaded-session.jsonl"),
+    );
+  });
+
+  it("accepts cross-agent absolute paths within another agent sessions dir", () => {
     const sessionsDir = "/tmp/openclaw/agents/default/sessions";
 
     const resolved = resolveSessionFilePath(
@@ -83,6 +97,30 @@ describe("session path safety", () => {
     );
 
     expect(resolved).toBe(path.resolve("/tmp/openclaw/agents/knox/sessions/uuid-1234.jsonl"));
+  });
+
+  it("rejects absolute paths under agents root that are not in a sessions dir", () => {
+    const sessionsDir = "/tmp/openclaw/agents/default/sessions";
+
+    expect(() =>
+      resolveSessionFilePath(
+        "sess-1",
+        { sessionFile: "/tmp/openclaw/agents/knox/not-sessions/uuid-1234.jsonl" },
+        { sessionsDir },
+      ),
+    ).toThrow(/within sessions directory/);
+  });
+
+  it("rejects absolute paths to agent config files under <agent>/agent/*", () => {
+    const sessionsDir = "/tmp/openclaw/agents/default/sessions";
+
+    expect(() =>
+      resolveSessionFilePath(
+        "sess-1",
+        { sessionFile: "/tmp/openclaw/agents/knox/agent/auth-profiles.json" },
+        { sessionsDir },
+      ),
+    ).toThrow(/within sessions directory/);
   });
 
   it("accepts sessionFile candidates within the sessions dir", () => {
