@@ -485,6 +485,7 @@ export async function agentCommand(
         provider,
         model,
         catalog: catalogForThinking,
+        agentThinkingDefault: agentCfg?.thinkingDefault as ThinkLevel | undefined,
       });
     }
     if (resolvedThinkLevel === "xhigh" && !supportsXHighThinking(provider, model)) {

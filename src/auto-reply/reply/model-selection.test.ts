@@ -264,3 +264,40 @@ describe("createModelSelectionState respects session model override", () => {
     expect(state.model).toBe("deepseek-v3-4bit-mlx");
   });
 });
+
+describe("createModelSelectionState thinking defaults", () => {
+  const defaultProvider = "openai";
+  const defaultModel = "gpt-4o-mini";
+
+  it("prefers per-agent thinkingDefault over global defaults", async () => {
+    const cfg = {
+      agents: {
+        defaults: {
+          thinkingDefault: "low",
+          models: {
+            "openai/gpt-4o-mini": {
+              thinkingDefault: "minimal",
+            },
+          },
+        },
+      },
+    } as OpenClawConfig;
+
+    const state = await createModelSelectionState({
+      cfg,
+      agentCfg: {
+        thinkingDefault: "high",
+      },
+      sessionEntry: makeEntry(),
+      sessionStore: {},
+      sessionKey: "agent:main:main",
+      defaultProvider,
+      defaultModel,
+      provider: defaultProvider,
+      model: defaultModel,
+      hasModelDirective: false,
+    });
+
+    await expect(state.resolveDefaultThinkingLevel()).resolves.toBe("high");
+  });
+});

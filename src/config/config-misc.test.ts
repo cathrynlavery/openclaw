@@ -177,6 +177,34 @@ describe("cron webhook schema", () => {
   });
 });
 
+describe("per-agent thinkingDefault", () => {
+  it("accepts valid thinkingDefault values on agents.list entries", () => {
+    const res = validateConfigObject({
+      agents: {
+        list: [
+          { id: "main", thinkingDefault: "medium" },
+          { id: "research", thinkingDefault: "xhigh" },
+        ],
+      },
+    });
+
+    expect(res.ok).toBe(true);
+  });
+
+  it("rejects invalid thinkingDefault values on agents.list entries", () => {
+    const res = validateConfigObject({
+      agents: {
+        list: [{ id: "main", thinkingDefault: "ultra" }],
+      },
+    });
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.issues[0]?.path).toBe("agents.list.0.thinkingDefault");
+    }
+  });
+});
+
 describe("broadcast", () => {
   it("accepts a broadcast peer map with strategy", () => {
     const res = validateConfigObject({
