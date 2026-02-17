@@ -1,14 +1,7 @@
 ---
 name: pr-dedup
 description: Incremental GitHub PR+Issue dedup with quality ranking, vision alignment checks, deep diff review, and cache-backed cron operation using only `gh` + native agent reasoning.
-metadata:
-  {
-    "openclaw":
-      {
-        "emoji": "🧹",
-        "requires": { "bins": ["gh"] },
-      },
-  }
+metadata: { "openclaw": { "emoji": "🧹", "requires": { "bins": ["gh"] } } }
 ---
 
 # PR + Issue Dedup (Incremental, Cache-Backed, Cron-First)
@@ -16,6 +9,7 @@ metadata:
 Use this skill when you need to continuously detect duplicate work across **pull requests and issues**, pick canonical threads, and keep repositories clean at scale.
 
 This skill is designed for:
+
 - high-volume repos
 - autonomous agent + human overlap
 - incremental cron runs (every ~15 minutes)
@@ -71,6 +65,7 @@ Example:
 ### Minimum item fields (required by spec)
 
 Store all scanned items with at least:
+
 - `number`
 - `title`
 - `files` (empty array for issues unless inferred/linked)
@@ -157,6 +152,7 @@ Recommended extended schema:
 Build initial cache in batches of 100.
 
 Collect:
+
 - all open PRs
 - all open issues
 - merged/closed PRs and issues updated in last `LOOKBACK_DAYS`
@@ -188,6 +184,7 @@ If result volumes exceed 100, process in additional 100-item batches (adjust sea
 ## B) Incremental run (every ~15 min, primary)
 
 Read cache and compute:
+
 - `SINCE = last_incremental_scan`
 
 Fetch only updates:
@@ -201,6 +198,7 @@ gh issue list --repo owner/repo --state all --search "updated:>=${SINCE}" --limi
 ```
 
 Then:
+
 1. Upsert changed items into cache.
 2. Recompute clusters only for touched items + related cached neighbors.
 3. Skip untouched clusters.
@@ -251,6 +249,7 @@ gh issue view <N> --repo owner/repo --json number,title,body,labels,state,create
 ```
 
 Also infer linked PRs from:
+
 - issue timeline (optional, when needed):
   ```bash
   gh api repos/owner/repo/issues/<N>/timeline
@@ -273,6 +272,7 @@ Cluster candidates using weighted signals:
 6. **Branch naming similarity** (PR-only)
 
 Confidence buckets:
+
 - `high`
 - `medium`
 - `low`
@@ -304,6 +304,7 @@ If you agree, we should consolidate discussion there.
 ## 4) Vision / Roadmap Alignment
 
 Try root docs in this order:
+
 1. `VISION.md`
 2. `ROADMAP.md`
 3. `CONTRIBUTING.md`
@@ -323,11 +324,13 @@ gh api repos/owner/repo/contents/CONTRIBUTING.md --jq .content | base64 --decode
 If none exist, skip vision scoring and note it.
 
 For each PR/issue, score `vision_alignment` (0-100):
+
 - Does it support stated goals?
 - Is it the right priority tier?
 - Is scope consistent with roadmap constraints?
 
 If clearly misaligned:
+
 - add `out-of-scope` label
 - leave explanation comment
 
@@ -349,6 +352,7 @@ Recommend moving this to a separate proposal/discussion thread.
 Do not rely on metadata alone. For candidate PRs, analyze actual diff content (`gh pr diff`).
 
 Evaluate and score:
+
 - `correctness_risk` (0 low risk → 100 high risk)
 - `test_adequacy` (0 poor → 100 strong)
 - `scope_creep` (0 tight → 100 sprawling)
@@ -356,6 +360,7 @@ Evaluate and score:
 - `quality` (overall 0-100)
 
 Signals to inspect in diffs:
+
 - architectural consistency
 - error handling and edge cases
 - API contract changes and migration risk
@@ -372,6 +377,7 @@ Use native reasoning and explain scores briefly, with concrete evidence.
 Within each duplicate cluster, rank PRs/issues and select canonical thread.
 
 Suggested weighted output:
+
 - CI health
 - review outcomes
 - deep diff risk profile
@@ -382,6 +388,7 @@ Suggested weighted output:
 - vision alignment
 
 Return concise per-item summary:
+
 - strengths
 - blockers
 - why canonical or why duplicate-candidate
@@ -401,6 +408,7 @@ gh pr close <dup_pr> --repo owner/repo --comment "Closing as stale duplicate: is
 Also update cache status to `stale-duplicate-closed`.
 
 Safety rule:
+
 - Auto-close only when confidence is high and merged canonical clearly resolves the same issue.
 - Otherwise, comment + label and escalate for human confirmation.
 
@@ -467,6 +475,7 @@ Every 15 minutes:
 8. Emit concise run summary.
 
 If cache file is missing/corrupt:
+
 - rebuild bootstrap cache
 - continue incremental cadence on next run
 
