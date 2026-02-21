@@ -25,7 +25,6 @@ const isOAuthProvider = (provider: string): provider is OAuthProvider =>
 const resolveOAuthProvider = (provider: string): OAuthProvider | null =>
   isOAuthProvider(provider) ? provider : null;
 
-<<<<<<< HEAD
 /** Bearer-token auth modes that are interchangeable (oauth tokens and raw tokens). */
 const BEARER_AUTH_MODES = new Set(["oauth", "token"]);
 
@@ -57,8 +56,6 @@ function isProfileConfigCompatible(params: {
   return true;
 }
 
-=======
->>>>>>> 77c4167bc (feat(auth): add Anthropic OAuth token refresh and fix external CLI sync)
 function buildOAuthApiKey(provider: string, credentials: OAuthCredentials): string {
   const needsProjectId = provider === "google-gemini-cli" || provider === "google-antigravity";
   return needsProjectId
@@ -69,7 +66,6 @@ function buildOAuthApiKey(provider: string, credentials: OAuthCredentials): stri
     : credentials.access;
 }
 
-<<<<<<< HEAD
 function buildApiKeyProfileResult(params: { apiKey: string; provider: string; email?: string }) {
   return {
     apiKey: params.apiKey,
@@ -140,8 +136,6 @@ function adoptNewerMainOAuthCredential(params: {
   return null;
 }
 
-=======
->>>>>>> 77c4167bc (feat(auth): add Anthropic OAuth token refresh and fix external CLI sync)
 async function refreshOAuthTokenWithLock(params: {
   profileId: string;
   agentDir?: string;
@@ -331,7 +325,6 @@ export async function resolveApiKeyForProfile(params: {
     }
     return { apiKey: token, provider: cred.provider, email: cred.email };
   }
-<<<<<<< HEAD
 
   const oauthCred =
     adoptNewerMainOAuthCredential({
@@ -347,14 +340,6 @@ export async function resolveApiKeyForProfile(params: {
       credentials: oauthCred,
       email: oauthCred.email,
     });
-=======
-  if (Date.now() < cred.expires) {
-    return {
-      apiKey: buildOAuthApiKey(cred.provider, cred),
-      provider: cred.provider,
-      email: cred.email,
-    };
->>>>>>> 77c4167bc (feat(auth): add Anthropic OAuth token refresh and fix external CLI sync)
   }
 
   try {
