@@ -73,4 +73,51 @@ describe("prepareSessionManagerForRun", () => {
     expect(header?.cwd).toBe("/tmp/workspace");
     expect(sm.sessionId).toBe("sess-1");
   });
+
+  it("does not rewrite header metadata when transcript already has an assistant message", async () => {
+    const dir = makeTempDir("openclaw-session-init-");
+    const sessionFile = path.join(dir, "sess.jsonl");
+
+    fs.writeFileSync(
+      sessionFile,
+      [
+        JSON.stringify({
+          type: "session",
+          version: CURRENT_SESSION_VERSION,
+          id: "existing-session-id",
+          timestamp: new Date().toISOString(),
+          cwd: "/",
+        }),
+        JSON.stringify({ type: "message", message: { role: "user", content: "hello" } }),
+        JSON.stringify({ type: "message", message: { role: "assistant", content: "hi there" } }),
+      ].join("\n") + "\n",
+      "utf-8",
+    );
+
+    const sm = SessionManager.open(sessionFile) as unknown as {
+      fileEntries: Array<unknown>;
+      sessionId: string;
+    };
+    const beforeSessionId = sm.sessionId;
+    const beforeContent = fs.readFileSync(sessionFile, "utf-8");
+
+    await prepareSessionManagerForRun({
+      sessionManager: sm,
+      sessionFile,
+      hadSessionFile: true,
+      sessionId: "new-session-id",
+      cwd: "/tmp/workspace",
+    });
+
+    const header = sm.fileEntries.find(
+      (entry): entry is { type: "session"; id?: string; cwd?: string } =>
+        typeof entry === "object" &&
+        entry !== null &&
+        (entry as { type?: unknown }).type === "session",
+    );
+    expect(header?.id).toBe("existing-session-id");
+    expect(header?.cwd).toBe("/");
+    expect(sm.sessionId).toBe(beforeSessionId);
+    expect(fs.readFileSync(sessionFile, "utf-8")).toBe(beforeContent);
+  });
 });
