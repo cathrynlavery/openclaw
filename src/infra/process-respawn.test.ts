@@ -2,9 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { captureFullEnv } from "../test-utils/env.js";
 
 const spawnMock = vi.hoisted(() => vi.fn());
+const triggerOpenClawRestartMock = vi.hoisted(() => vi.fn());
 
 vi.mock("node:child_process", () => ({
   spawn: (...args: unknown[]) => spawnMock(...args),
+}));
+vi.mock("./restart.js", () => ({
+  triggerOpenClawRestart: triggerOpenClawRestartMock,
 }));
 
 import { restartGatewayProcessWithFreshPid } from "./process-respawn.js";
@@ -12,15 +16,31 @@ import { restartGatewayProcessWithFreshPid } from "./process-respawn.js";
 const originalArgv = [...process.argv];
 const originalExecArgv = [...process.execArgv];
 const envSnapshot = captureFullEnv();
+const originalPlatformDescriptor = Object.getOwnPropertyDescriptor(process, "platform");
+
+function setPlatform(platform: string) {
+  if (!originalPlatformDescriptor) {
+    return;
+  }
+  Object.defineProperty(process, "platform", {
+    ...originalPlatformDescriptor,
+    value: platform,
+  });
+}
 
 afterEach(() => {
   envSnapshot.restore();
   process.argv = [...originalArgv];
   process.execArgv = [...originalExecArgv];
   spawnMock.mockReset();
+  triggerOpenClawRestartMock.mockReset();
+  if (originalPlatformDescriptor) {
+    Object.defineProperty(process, "platform", originalPlatformDescriptor);
+  }
 });
 
 function clearSupervisorHints() {
+  delete process.env.OPENCLAW_LAUNCHD_LABEL;
   delete process.env.LAUNCH_JOB_LABEL;
   delete process.env.LAUNCH_JOB_NAME;
   delete process.env.INVOCATION_ID;
@@ -41,6 +61,40 @@ describe("restartGatewayProcessWithFreshPid", () => {
     const result = restartGatewayProcessWithFreshPid();
     expect(result.mode).toBe("supervised");
     expect(spawnMock).not.toHaveBeenCalled();
+  });
+
+  it("triggers launchctl kickstart on macOS when launchd label is available", () => {
+    setPlatform("darwin");
+    process.env.LAUNCH_JOB_LABEL = "ai.openclaw.gateway";
+    process.env.OPENCLAW_LAUNCHD_LABEL = "ai.openclaw.gateway";
+    triggerOpenClawRestartMock.mockReturnValue({
+      ok: true,
+      method: "launchctl",
+    });
+
+    const result = restartGatewayProcessWithFreshPid();
+
+    expect(result.mode).toBe("supervised");
+    expect(triggerOpenClawRestartMock).toHaveBeenCalledTimes(1);
+    expect(spawnMock).not.toHaveBeenCalled();
+  });
+
+  it("falls back to in-process restart when launchctl kickstart fails", () => {
+    setPlatform("darwin");
+    process.env.LAUNCH_JOB_LABEL = "ai.openclaw.gateway";
+    process.env.OPENCLAW_LAUNCHD_LABEL = "ai.openclaw.gateway";
+    triggerOpenClawRestartMock.mockReturnValue({
+      ok: false,
+      method: "launchctl",
+      detail: "bad label",
+    });
+
+    const result = restartGatewayProcessWithFreshPid();
+
+    expect(result.mode).toBe("failed");
+    expect(result.detail).toContain("launchd kickstart failed");
+    expect(result.detail).toContain("bad label");
+    expect(triggerOpenClawRestartMock).toHaveBeenCalledTimes(1);
   });
 
   it("spawns detached child with current exec argv", () => {

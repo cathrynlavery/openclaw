@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { triggerOpenClawRestart } from "./restart.js";
 
 type RespawnMode = "spawned" | "supervised" | "disabled" | "failed";
 
@@ -42,6 +43,16 @@ export function restartGatewayProcessWithFreshPid(): GatewayRespawnResult {
     return { mode: "disabled" };
   }
   if (isLikelySupervisedProcess(process.env)) {
+    // In supervised macOS launchd mode, explicitly request an immediate kickstart.
+    if (process.platform === "darwin" && process.env.OPENCLAW_LAUNCHD_LABEL?.trim()) {
+      const restart = triggerOpenClawRestart();
+      if (!restart.ok) {
+        return {
+          mode: "failed",
+          detail: `launchd kickstart failed: ${restart.detail ?? "unknown error"}`,
+        };
+      }
+    }
     return { mode: "supervised" };
   }
 
