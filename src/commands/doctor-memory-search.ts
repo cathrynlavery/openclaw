@@ -140,10 +140,10 @@ function hasLocalEmbeddings(local: { modelPath?: string }): boolean {
   if (!modelPath) {
     return false;
   }
-  // Remote/downloadable models (hf: or http:) aren't pre-resolved on disk,
+  // Remote/downloadable models (hf: or http(s):) aren't pre-resolved on disk,
   // so we can't confirm availability without a network call. Treat as
   // potentially available — the user configured it intentionally.
-  if (/^(hf:|https?:)/i.test(modelPath)) {
+  if (isDownloadableModelPath(modelPath)) {
     return true;
   }
   const resolved = resolveUserPath(modelPath);
@@ -152,6 +152,10 @@ function hasLocalEmbeddings(local: { modelPath?: string }): boolean {
   } catch {
     return false;
   }
+}
+
+function isDownloadableModelPath(modelPath: string): boolean {
+  return /^(hf:|hf:\/\/|https?:\/\/)/i.test(modelPath);
 }
 
 async function hasApiKeyForProvider(
